@@ -131,12 +131,39 @@ async function run() {
     });
 
     // Delete task 
-    app.delete('/delete/:id', async (req,res) => {
+    app.delete('/delete/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
-      const query = { _id:new ObjectId(id) }
+      const query = { _id: new ObjectId(id) }
       const result = await tasksCollection.deleteOne(query);
       res.send(result)
     })
+
+    // Get single task by ID
+    app.get('/tasks/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const email = req.user.email;
+
+      const task = await tasksCollection.findOne({
+        _id: new ObjectId(id),
+        userEmail: email,
+      });
+      res.send(task);
+    });
+
+    // Update a task by ID
+    app.put('/tasks/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const updatedTask = req.body;
+      const email = req.user.email;
+
+      const result = await tasksCollection.updateOne(
+        { _id: new ObjectId(id), userEmail: email },
+        { $set: updatedTask }
+      );
+
+      res.send(result);
+    });
+
 
 
 
