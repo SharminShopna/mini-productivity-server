@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const jwt = require('jsonwebtoken')
@@ -103,13 +103,33 @@ async function run() {
     // Add Task (Create)
     app.post('/tasks', verifyToken, async (req, res) => {
       const task = req.body;
-      task.userEmail = req.user.email;  
+      task.userEmail = req.user.email;
       task.status = 'incomplete';       // Default status
       task.createdAt = new Date();
 
       const result = await tasksCollection.insertOne(task);
       res.send(result);
     });
+
+    // Get Tasks for logged-in user
+    app.get('/tasks', verifyToken, async (req, res) => {
+      const email = req.user.email;
+      const tasks = await tasksCollection.find({ userEmail: email }).sort({ createdAt: -1 }).toArray();
+      res.send(tasks);
+    });
+
+    // Update task status to 'completed'
+    app.patch('/tasks/:id/complete', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const email = req.user.email;
+
+      const result = await tasksCollection.updateOne(
+        { _id: new ObjectId(id), userEmail: email },
+        { $set: { status: 'completed' } }
+      );
+      res.send(result);
+    });
+
 
 
 
