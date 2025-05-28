@@ -9,10 +9,10 @@ const port = process.env.PORT || 5000;
 
 
 app.use(cors({
-  origin:[
+  origin: [
     'http://localhost:5173',
     'http://localhost:5174',
-    
+
   ],
   credentials: true
 }));
@@ -55,11 +55,12 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    // start-------->
+    // start Collection-------->
 
     const usersCollection = client.db('miniProductivity').collection('users')
+    const tasksCollection = client.db('miniProductivity').collection('tasks');
 
-    // Save or update a user in db
+    // Save or update a user in db ----->
     app.post('/users', async (req, res) => {
       const { email, name, photoURL } = req.body;
       const existing = await usersCollection.findOne({ email });
@@ -77,7 +78,7 @@ async function run() {
       res.send(result);
     });
 
-    // Login: issue token
+    // Login: issue token ------>
     app.post('/jwt', async (req, res) => {
       const { email } = req.body;
       const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
@@ -91,11 +92,23 @@ async function run() {
       }).send({ success: true });
     });
 
+    // Logout get ----->
     app.get('/logout', (req, res) => {
       res.clearCookie('token', {
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       }).send({ success: true });
+    });
+
+    // Add Task (Create)
+    app.post('/tasks', verifyToken, async (req, res) => {
+      const task = req.body;
+      task.userEmail = req.user.email;  
+      task.status = 'incomplete';       // Default status
+      task.createdAt = new Date();
+
+      const result = await tasksCollection.insertOne(task);
+      res.send(result);
     });
 
 
@@ -110,10 +123,10 @@ async function run() {
 }
 run().catch(console.dir);
 
-app.get('/',(req,res)=>{
-    res.send('mini productivity platform started')
+app.get('/', (req, res) => {
+  res.send('mini productivity platform started')
 })
-app.listen(port,()=>{
-    console.log(`mini productivity platform:${port}`)
+app.listen(port, () => {
+  console.log(`mini productivity platform:${port}`)
 })
 
