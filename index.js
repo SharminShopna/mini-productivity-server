@@ -1,10 +1,41 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+require('dotenv').config()
 const app = express();
+const jwt = require('jsonwebtoken')
+const cookieParser = require('cookie-parser')
 const port = process.env.PORT || 5000;
-app.use(cors());
+
+
+app.use(cors({
+  origin:[
+    'http://localhost:5173',
+    'http://localhost:5174',
+    
+  ],
+  credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser())
+
+// Token Verify
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token
+
+  if (!token) {
+    return res.status(401).send({ message: 'unauthorized access' })
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      console.log(err)
+      return res.status(401).send({ message: 'unauthorized access' })
+    }
+    req.user = decoded
+    next()
+  })
+}
+
 
 
 
@@ -25,7 +56,48 @@ async function run() {
     await client.connect();
 
     // start-------->
-    
+
+    const usersCollection = client.db('miniProductivity').collection('users')
+
+    // Save or update a user in db
+    app.post('/users', async (req, res) => {
+      const { email, name, photoURL } = req.body;
+      const existing = await usersCollection.findOne({ email });
+      if (existing) return res.send(existing);
+
+      const newUser = {
+        name,
+        email,
+        photoURL,
+        role: 'user',
+        createdAt: new Date()
+      };
+
+      const result = await usersCollection.insertOne(newUser);
+      res.send(result);
+    });
+
+    // Login: issue token
+    app.post('/jwt', async (req, res) => {
+      const { email } = req.body;
+      const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '365d'
+      });
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      }).send({ success: true });
+    });
+
+    app.get('/logout', (req, res) => {
+      res.clearCookie('token', {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      }).send({ success: true });
+    });
+
 
 
     // Send a ping to confirm a successful connection
