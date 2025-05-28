@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser')
 const port = process.env.PORT || 5000;
 
 
+
 app.use(cors({
   origin: [
     'http://localhost:5173',
@@ -59,6 +60,8 @@ async function run() {
 
     const usersCollection = client.db('miniProductivity').collection('users')
     const tasksCollection = client.db('miniProductivity').collection('tasks');
+    const goalsCollection = client.db('miniProductivity').collection('goals');
+
 
     // Save or update a user in db ----->
     app.post('/users', async (req, res) => {
@@ -163,6 +166,71 @@ async function run() {
 
       res.send(result);
     });
+
+    // Add Goal------------>
+    app.post('/goals', verifyToken, async (req, res) => {
+      const { goal, type } = req.body;
+      const email = req.user.email;
+
+      const newGoal = {
+        goal,
+        type,
+        userEmail: email,
+        createdAt: new Date()
+      };
+
+      const result = await goalsCollection.insertOne(newGoal);
+      res.send(result);
+    });
+
+    // Get all goals for the logged-in user
+    app.get('/goals', verifyToken, async (req, res) => {
+      const email = req.user.email;
+      const goals = await goalsCollection.find({ userEmail: email }).sort({ createdAt: -1 }).toArray();
+      res.send(goals);
+    });
+
+    // Get Single Goal by ID
+    app.get('/goals/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const email = req.user.email;
+
+      const goal = await goalsCollection.findOne({
+        _id: new ObjectId(id),
+        userEmail: email
+      });
+
+      res.send(goal);
+    });
+
+    // Update Goal by ID
+    app.put('/goals/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const updatedGoal = req.body;
+      const email = req.user.email;
+
+      const result = await goalsCollection.updateOne(
+        { _id: new ObjectId(id), userEmail: email },
+        { $set: updatedGoal }
+      );
+
+      res.send(result);
+    });
+
+    // Delete Goal by ID
+    app.delete('/goals/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const email = req.user.email;
+
+      const result = await goalsCollection.deleteOne({
+        _id: new ObjectId(id),
+        userEmail: email
+      });
+
+      res.send(result);
+    });
+
+
 
 
 
