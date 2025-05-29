@@ -88,6 +88,7 @@ async function run() {
         expiresIn: '365d'
       });
 
+
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -228,6 +229,32 @@ async function run() {
       });
 
       res.send(result);
+    });
+
+
+    //  New Route for Motivational Quote
+    app.get('/quote', async (req, res) => {
+      try {
+        const response = await fetch('https://zenquotes.io/api/random');
+        const data = await response.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+          const { q, a } = data[0];
+          res.send({ quote: q, author: a || 'Unknown' });
+        } else {
+          res.status(404).send({ message: 'No quote found' });
+        }
+      } catch (error) {
+        console.error('Quote fetch error:', error);
+        res.status(500).send({ message: 'Failed to fetch quote' });
+      }
+    });
+
+    // optional---->
+    app.get('/users/info', verifyToken, async (req, res) => {
+      const email = req.query.email;
+      const user = await usersCollection.findOne({ email });
+      res.send(user);
     });
 
 
