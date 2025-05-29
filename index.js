@@ -15,6 +15,7 @@ app.use(cors({
     'http://localhost:5174',
     'http://localhost:5175',
     'https://mini-productivity-client-463j.vercel.app',
+    'https://mini-productivity-client-de7v.vercel.app',
 
   ],
   credentials: true
